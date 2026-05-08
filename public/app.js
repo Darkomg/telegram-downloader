@@ -320,15 +320,30 @@ function renderDownloads() {
     return (order[a.status] ?? 4) - (order[b.status] ?? 4);
   });
 
+  const FILE_ICON = { completed: '✓', failed: '✗', skipped: '—', downloading: '↓', pending: '·' };
+  const FILE_COLOR = { completed: 'var(--green)', failed: 'var(--red)', skipped: 'var(--muted)', downloading: 'var(--accent)', pending: 'var(--muted)' };
+
   list.innerHTML = sorted.map(dl => {
-    const pct = dl.percent;
-    const fillClass = dl.status === 'completed' ? 'completed' : dl.status === 'error' ? 'error' : '';
+    const globalFillClass = dl.status === 'completed' ? 'completed' : dl.status === 'error' ? 'error' : '';
     const statusLabel = { running: 'Descargando', queued: 'En cola', completed: 'Completado', error: 'Error', paused: 'Pausado', cancelled: 'Cancelado' }[dl.status] || dl.status;
-    const logHtml = dl.log.map(line => {
-      if (line.startsWith('[OK]')) return `<div class="log-ok">${escHtml(line)}</div>`;
-      if (line.startsWith('[SKIP]')) return `<div class="log-skip">${escHtml(line)}</div>`;
-      if (line.startsWith('[FAIL]') || line.startsWith('[ERROR]')) return `<div class="log-fail">${escHtml(line)}</div>`;
-      return `<div class="log-dl">${escHtml(line)}</div>`;
+
+    const filesHtml = (dl.files || []).map(f => {
+      const icon  = FILE_ICON[f.status]  || '·';
+      const color = FILE_COLOR[f.status] || 'var(--muted)';
+      const name  = f.filename ? escHtml(f.filename) : `#${f.id}`;
+      const sizeStr = f.size ? fmtBytes(f.size) : '';
+      let extra = '';
+      if (f.status === 'downloading' && f.size > 0) {
+        const pct = Math.round((f.bytes / f.size) * 100);
+        extra = `<span class="file-item-progress">${fmtBytes(f.bytes)} / ${fmtBytes(f.size)} (${pct}%)</span>`;
+      } else if (f.size) {
+        extra = `<span class="file-item-size">${sizeStr}</span>`;
+      }
+      return `<div class="file-item">
+        <span class="file-item-icon" style="color:${color}">${icon}</span>
+        <span class="file-item-name">${name}</span>
+        ${extra}
+      </div>`;
     }).join('');
 
     return `
@@ -337,17 +352,15 @@ function renderDownloads() {
           <div class="download-title">${escHtml(dl.channelTitle || dl.channelId)}</div>
           <span class="download-status status-${dl.status}">${statusLabel}</span>
         </div>
+        <div class="progress-label">Archivo actual <span>${dl.filePercent}%${dl.expectedBytes > 0 ? ` — ${fmtBytes(dl.currentBytes)} / ${fmtBytes(dl.expectedBytes)}` : ''}</span></div>
         <div class="progress-bar-wrap">
-          <div class="progress-bar-fill ${fillClass}" style="width:${pct}%"></div>
+          <div class="progress-bar-fill" style="width:${dl.filePercent}%"></div>
         </div>
-        <div class="download-stats">
-          <span><b>${dl.done}</b> / ${dl.total} archivos</span>
-          <span><b>${pct}%</b></span>
-          ${dl.expectedBytes > 0 ? `<span style="color:var(--muted)">${fmtBytes(dl.currentBytes)} / ${fmtBytes(dl.expectedBytes)}</span>` : ''}
-          ${dl.failed ? `<span style="color:var(--red)"><b>${dl.failed}</b> fallidos</span>` : ''}
-          <span style="color:var(--muted)">${escHtml(dl.outDir)}</span>
+        <div class="progress-label">Global <span>${dl.globalPercent}% — ${dl.done}/${dl.total} archivos${dl.failed ? ` · <span style="color:var(--red)">${dl.failed} fallidos</span>` : ''}</span></div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill ${globalFillClass}" style="width:${dl.globalPercent}%"></div>
         </div>
-        <div class="download-log">${logHtml || '<span style="color:var(--muted)">Iniciando...</span>'}</div>
+        <div class="file-list">${filesHtml || '<span style="color:var(--muted);font-size:12px">Obteniendo lista...</span>'}</div>
         <div class="download-card-footer">
           ${dl.canPause  ? `<button class="btn-ghost btn-pause-dl"  data-id="${dl.id}">Pausar</button>` : ''}
           ${dl.canResume ? `<button class="btn-ghost btn-resume-dl" data-id="${dl.id}">Reanudar</button>` : ''}

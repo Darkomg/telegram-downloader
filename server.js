@@ -294,6 +294,7 @@ app.post('/api/download', async (req, res) => {
     status: 'queued',
     outDir,
     remainingIds: [...messageIds],
+    files: messageIds.map(mid => ({ id: mid, filename: null, size: 0, bytes: 0, status: 'pending' })),
     log: [],
   };
 
@@ -317,11 +318,26 @@ async function runDownload(id, outDir) {
 
     fs.mkdirSync(outDir, { recursive: true });
 
+    // Pre-fetch metadata for all remaining files
+    if (dl.files.every(f => !f.filename)) {
+      const prefetch = await client.getMessages(entity, { ids: dl.remainingIds });
+      for (const msg of prefetch) {
+        if (!msg) continue;
+        const entry = dl.files.find(f => f.id === msg.id);
+        if (!entry) continue;
+        const info = getMediaInfo(msg);
+        entry.filename = info?.filename || `msg_${msg.id}`;
+        entry.size = msg.media?.document?.size ? Number(msg.media.document.size) : 0;
+      }
+      broadcast({ type: 'download_update', download: sanitizeDl(dl) });
+    }
+
     while (dl.remainingIds.length > 0) {
       if (dl.cancelled) { dl.status = 'cancelled'; break; }
       if (dl.paused)    { dl.status = 'paused';    break; }
 
       const msgId = dl.remainingIds[0];
+      const fileEntry = dl.files.find(f => f.id === msgId);
       let skipped = false;
       let success = false;
 
@@ -330,25 +346,29 @@ async function runDownload(id, outDir) {
           const msgs = await client.getMessages(entity, { ids: [msgId] });
           if (!msgs || !msgs[0]) throw new Error('Mensaje no encontrado');
           const info = getMediaInfo(msgs[0]);
-          if (!info) { skipped = true; break; }
+          if (!info) {
+            if (fileEntry) fileEntry.status = 'skipped';
+            skipped = true; break;
+          }
 
           const filename = path.join(outDir, info.filename);
+          if (fileEntry) { fileEntry.filename = info.filename; fileEntry.size = msgs[0].media?.document?.size ? Number(msgs[0].media.document.size) : 0; }
 
           if (attempt === 1 && fs.existsSync(filename)) {
             dl.done++;
+            if (fileEntry) fileEntry.status = 'skipped';
             dl.log.push(`[SKIP] ${info.filename}`);
             broadcast({ type: 'download_update', download: sanitizeDl(dl) });
-            skipped = true;
-            break;
+            skipped = true; break;
           }
 
+          if (fileEntry) { fileEntry.status = 'downloading'; fileEntry.bytes = 0; }
           dl.log.push(`[DL] ${info.filename}${attempt > 1 ? ` (intento ${attempt})` : ''}`);
           dl.fileProgress = 0;
           dl.currentBytes = 0;
-          dl.expectedBytes = msgs[0].media?.document?.size ? Number(msgs[0].media.document.size) : 0;
+          dl.expectedBytes = fileEntry?.size || 0;
           broadcast({ type: 'download_update', download: sanitizeDl(dl) });
 
-          // Stream wrapper: counts bytes, tracks progress, supports cancel/pause
           let interrupted = null;
           let chunkBytes = 0;
           const fileStream = fs.createWriteStream(filename);
@@ -358,12 +378,12 @@ async function runDownload(id, outDir) {
               if (dl.paused)    { interrupted = 'paused';    throw new Error('paused'); }
               chunkBytes += chunk.length;
               dl.currentBytes = chunkBytes;
+              if (fileEntry) fileEntry.bytes = chunkBytes;
               dl.fileProgress = dl.expectedBytes > 0 ? chunkBytes / dl.expectedBytes : 0;
               fileStream.write(chunk);
             },
           };
 
-          // Broadcast progress every 1.5s
           const progressInterval = setInterval(() => {
             broadcast({ type: 'download_update', download: sanitizeDl(dl) });
           }, 1500);
@@ -373,17 +393,20 @@ async function runDownload(id, outDir) {
             clearInterval(progressInterval);
             await new Promise((res, rej) => fileStream.end(err => err ? rej(err) : res()));
             dl.done++;
+            if (fileEntry) { fileEntry.status = 'completed'; fileEntry.bytes = fileEntry.size; }
             dl.fileProgress = 0;
             dl.currentBytes = 0;
             dl.expectedBytes = 0;
             dl.log.push(`[OK] ${info.filename}`);
             broadcast({ type: 'download_update', download: sanitizeDl(dl) });
-            success = true;
-            break;
+            success = true; break;
           } catch (e) {
             clearInterval(progressInterval);
             try { fileStream.destroy(); fs.unlinkSync(filename); } catch {}
-            if (interrupted) { skipped = true; break; }
+            if (interrupted) {
+              if (fileEntry) fileEntry.status = 'pending';
+              skipped = true; break;
+            }
             if (attempt < 3) await new Promise(r => setTimeout(r, 3000));
           }
         } catch (e) {
@@ -393,7 +416,8 @@ async function runDownload(id, outDir) {
 
       if (!skipped && !success) {
         dl.failed++;
-        dl.log.push(`[FAIL] msg ${msgId}`);
+        if (fileEntry) fileEntry.status = 'failed';
+        dl.log.push(`[FAIL] ${fileEntry?.filename || msgId}`);
         broadcast({ type: 'download_update', download: sanitizeDl(dl) });
       }
 
@@ -444,17 +468,19 @@ app.delete('/api/downloads/:id', (req, res) => {
 });
 
 function sanitizeDl(dl) {
-  const percent = (dl.status === 'running' && (dl.fileProgress || 0) > 0)
-    ? Math.round((dl.fileProgress || 0) * 100)
-    : (dl.total > 0 ? Math.round((dl.done / dl.total) * 100) : 0);
+  const fp = dl.fileProgress || 0;
+  const filePercent  = Math.round(fp * 100);
+  const globalPercent = dl.total > 0 ? Math.round(((dl.done + fp) / dl.total) * 100) : 0;
   return {
     id: dl.id, channelId: dl.channelId, channelTitle: dl.channelTitle,
     total: dl.total, done: dl.done, failed: dl.failed,
     status: dl.status, outDir: dl.outDir,
-    log: dl.log.slice(-50),
-    percent,
+    log: dl.log.slice(-20),
+    filePercent,
+    globalPercent,
     currentBytes: dl.currentBytes || 0,
     expectedBytes: dl.expectedBytes || 0,
+    files: dl.files || [],
     canPause: dl.status === 'running' || dl.status === 'queued',
     canResume: dl.status === 'paused',
     canCancel: dl.status === 'running' || dl.status === 'queued' || dl.status === 'paused',

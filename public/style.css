@@ -365,14 +365,36 @@ nav { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
 .progress-bar-fill.completed { background: var(--green); }
 .progress-bar-fill.error { background: var(--red); }
 
-.download-stats {
+.progress-label {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
+  justify-content: space-between;
+  font-size: 11px;
   color: var(--muted);
-  margin-bottom: 10px;
+  margin-bottom: 4px;
+  margin-top: 8px;
 }
-.download-stats span b { color: var(--text); }
+.progress-label span { color: var(--text); font-size: 11px; }
+
+.file-list {
+  margin-top: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 0;
+}
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.file-item:hover { background: var(--bg3); }
+.file-item-icon { width: 14px; text-align: center; font-size: 12px; flex-shrink: 0; font-weight: 700; }
+.file-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.file-item-size { color: var(--muted); font-size: 11px; font-family: monospace; flex-shrink: 0; }
+.file-item-progress { color: var(--accent); font-size: 11px; font-family: monospace; flex-shrink: 0; }
 
 .download-log {
   background: #0d1117;
@@ -381,9 +403,10 @@ nav { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
   font-family: monospace;
   font-size: 11px;
   color: var(--muted);
-  max-height: 120px;
+  max-height: 80px;
   overflow-y: auto;
   line-height: 1.6;
+  margin-top: 8px;
 }
 .log-ok { color: var(--green); }
 .log-skip { color: var(--muted); }
