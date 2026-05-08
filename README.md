@@ -148,5 +148,4 @@ tldl/
 
 ## Built With AI
 
-This project was fully designed and coded using **Claude Sonnet** by [Anthropic](https://anthropic.com).  
-Prompted and directed by **Orlando Gutiérrez**.
+This project was fully designed and coded using **Claude Sonnet** by [Anthropic](https://anthropic.com).
