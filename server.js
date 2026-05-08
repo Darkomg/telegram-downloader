@@ -334,4 +334,4 @@ wss.on('connection', ws => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-server.listen(PORT, () => console.log(`Telegram Downloader UI running on port ${PORT}`));
+server.listen(PORT, () => console.log(`TL;DL running on port ${PORT}`));

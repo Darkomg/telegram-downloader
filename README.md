@@ -1,4 +1,4 @@
-# Telegram Downloader
+# TL;DL
 
 A self-hosted web UI for downloading media from Telegram channels. Built to run as a Docker container on ZimaOS or any Docker-compatible server.
 
@@ -79,8 +79,8 @@ Open your browser at `http://localhost:3000`
 1. SSH into your ZimaOS server
 2. Clone this repo:
    ```bash
-   git clone https://github.com/Darkomg/telegram-downloader.git
-   cd telegram-downloader
+   git clone https://github.com/Darkomg/tldl.git
+   cd tldl
    ```
 3. Edit `docker-compose.yml` with your API credentials and media path
 4. Build and start:
@@ -94,7 +94,7 @@ Open your browser at `http://localhost:3000`
 ## Project Structure
 
 ```
-telegram-downloader/
+tldl/
 ├── server.js          # Express backend + WebSocket server
 ├── public/
 │   ├── index.html     # Main UI
