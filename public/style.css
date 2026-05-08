@@ -294,6 +294,19 @@ nav { padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; }
 .video-num { color: var(--muted); font-size: 12px; font-family: monospace; width: 40px; flex-shrink: 0; }
 .video-caption { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .video-caption .no-caption { color: var(--muted); font-style: italic; }
+.media-filter-bar {
+  display: flex; gap: 6px; padding: 8px 24px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.media-filter-bar:empty { display: none; }
+.media-filter-btn {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--muted);
+  padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+}
+.media-filter-btn:hover { border-color: var(--accent); color: var(--text); }
+.media-filter-btn.active { background: rgba(91,141,238,0.15); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
 .media-badge {
   font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
   text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; font-family: monospace;

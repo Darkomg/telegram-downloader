@@ -1,6 +1,8 @@
 // ── State ────────────────────────────────────────────────────────────────────
 let currentChannelId = null;
 let currentChannelTitle = null;
+let currentMediaList = [];
+let currentMediaFilter = 'all';
 let ws = null;
 let downloads = {};
 let appConfig = {};
@@ -196,10 +198,43 @@ async function openChannel(id, title) {
   const res = await api(`/api/channels/${id}/media`);
   if (res.error) { list.innerHTML = `<div class="empty-state">${res.error}</div>`; return; }
 
-  const videos = res.media.sort((a, b) => a.id - b.id);
-  if (!videos.length) { list.innerHTML = '<div class="empty-state">No hay archivos en este canal.</div>'; return; }
+  currentMediaList = res.media.sort((a, b) => a.id - b.id);
+  currentMediaFilter = 'all';
+  renderFilterButtons();
+  renderMediaList('all');
+}
 
-  list.innerHTML = videos.map((v, i) => {
+function renderFilterButtons() {
+  const bar = document.getElementById('media-filter-bar');
+  if (!currentMediaList.length) { bar.innerHTML = ''; return; }
+
+  const counts = {};
+  currentMediaList.forEach(v => { counts[v.mediaType] = (counts[v.mediaType] || 0) + 1; });
+  const types = Object.keys(counts);
+
+  bar.innerHTML = `<button class="media-filter-btn active" data-filter="all">Todos (${currentMediaList.length})</button>` +
+    types.map(t => `<button class="media-filter-btn" data-filter="${t}">${t} (${counts[t]})</button>`).join('');
+
+  bar.querySelectorAll('.media-filter-btn').forEach(btn => {
+    btn.onclick = () => renderMediaList(btn.dataset.filter);
+  });
+}
+
+function renderMediaList(filter) {
+  currentMediaFilter = filter;
+  document.querySelectorAll('.media-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+
+  const items = filter === 'all' ? currentMediaList : currentMediaList.filter(v => v.mediaType === filter);
+  const list = document.getElementById('videos-list');
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state">No hay archivos de este tipo.</div>';
+    document.getElementById('chk-select-all').checked = false;
+    updateDownloadBtn();
+    return;
+  }
+
+  list.innerHTML = items.map((v, i) => {
     const label = v.caption ? escHtml(v.caption) : (v.filename ? escHtml(v.filename) : '<span class="no-caption">Sin título</span>');
     const badge = `<span class="media-badge media-badge-${v.mediaType || 'document'}">${v.mediaType || 'doc'}</span>`;
     return `
@@ -211,9 +246,9 @@ async function openChannel(id, title) {
     </div>`;
   }).join('');
 
-  list.querySelectorAll('.video-chk').forEach(chk => {
-    chk.onchange = updateDownloadBtn;
-  });
+  list.querySelectorAll('.video-chk').forEach(chk => { chk.onchange = updateDownloadBtn; });
+  document.getElementById('chk-select-all').checked = false;
+  updateDownloadBtn();
 }
 
 function toggleSelectAll() {

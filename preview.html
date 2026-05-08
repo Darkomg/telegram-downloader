@@ -192,6 +192,11 @@
     .video-num { color: var(--muted); font-size: 12px; font-family: monospace; width: 40px; flex-shrink: 0; }
     .video-caption { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .video-caption .no-caption { color: var(--muted); font-style: italic; }
+    .media-filter-bar { display: flex; gap: 6px; padding: 8px 24px; flex-shrink: 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .media-filter-bar:empty { display: none; }
+    .media-filter-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .media-filter-btn:hover { border-color: var(--accent); color: var(--text); }
+    .media-filter-btn.active { background: rgba(91,141,238,0.15); border-color: var(--accent); color: var(--accent); font-weight: 600; }
     .media-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; font-family: monospace; }
     .media-badge-video    { background: rgba(91,141,238,0.15);  color: var(--accent); }
     .media-badge-document { background: rgba(245,200,66,0.15);  color: var(--yellow); }
@@ -335,6 +340,7 @@
           <button id="btn-start-download" class="btn-primary" disabled>⬇️ Descargar seleccionados</button>
         </div>
       </div>
+      <div id="media-filter-bar" class="media-filter-bar"></div>
       <div id="videos-list" class="list-container">
         <div class="loading">Cargando videos...</div>
       </div>
@@ -488,6 +494,8 @@ function skipToApp() { mockLoggedIn = true; showApp(); }
 let currentChannelId = null;
 let currentChannelTitle = null;
 let currentDownloadPath = '/downloads';
+let currentMediaList = [];
+let currentMediaFilter = 'all';
 let downloads = {};
 let appConfig = {};
 
@@ -629,9 +637,36 @@ async function openChannel(id, title) {
   list.innerHTML = '<div class="loading">Cargando videos...</div>';
   const res = await api(`/api/channels/${id}/media`);
   if (res.error) { list.innerHTML = `<div class="empty-state">${res.error}</div>`; return; }
-  const videos = res.media.sort((a,b) => a.id - b.id);
-  if (!videos.length) { list.innerHTML = '<div class="empty-state">No hay archivos en este canal.</div>'; return; }
-  list.innerHTML = videos.map((v,i) => {
+  currentMediaList = res.media.sort((a,b) => a.id - b.id);
+  currentMediaFilter = 'all';
+  renderFilterButtons();
+  renderMediaList('all');
+}
+
+function renderFilterButtons() {
+  const bar = document.getElementById('media-filter-bar');
+  if (!currentMediaList.length) { bar.innerHTML = ''; return; }
+  const counts = {};
+  currentMediaList.forEach(v => { counts[v.mediaType] = (counts[v.mediaType]||0) + 1; });
+  const types = Object.keys(counts);
+  bar.innerHTML = `<button class="media-filter-btn active" data-filter="all">Todos (${currentMediaList.length})</button>` +
+    types.map(t => `<button class="media-filter-btn" data-filter="${t}">${t} (${counts[t]})</button>`).join('');
+  bar.querySelectorAll('.media-filter-btn').forEach(btn => {
+    btn.onclick = () => renderMediaList(btn.dataset.filter);
+  });
+}
+
+function renderMediaList(filter) {
+  currentMediaFilter = filter;
+  document.querySelectorAll('.media-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === filter));
+  const items = filter === 'all' ? currentMediaList : currentMediaList.filter(v => v.mediaType === filter);
+  const list = document.getElementById('videos-list');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-state">No hay archivos de este tipo.</div>';
+    document.getElementById('chk-select-all').checked = false;
+    updateDownloadBtn(); return;
+  }
+  list.innerHTML = items.map((v,i) => {
     const label = v.caption ? escHtml(v.caption) : (v.filename ? escHtml(v.filename) : '<span class="no-caption">Sin título</span>');
     const badge = `<span class="media-badge media-badge-${v.mediaType||'document'}">${v.mediaType||'doc'}</span>`;
     return `<div class="video-row">
@@ -642,6 +677,8 @@ async function openChannel(id, title) {
     </div>`;
   }).join('');
   list.querySelectorAll('.video-chk').forEach(chk => { chk.onchange = updateDownloadBtn; });
+  document.getElementById('chk-select-all').checked = false;
+  updateDownloadBtn();
 }
 
 function toggleSelectAll() {
