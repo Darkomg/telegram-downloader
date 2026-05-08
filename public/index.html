@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Downloader</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="screen-login" class="screen active">
+    <div class="login-box">
+      <div class="logo">✈️</div>
+      <h1>Telegram Downloader</h1>
+      <p class="subtitle">Conecta tu cuenta para empezar</p>
+      <div id="login-phone-step">
+        <input id="input-phone" type="tel" placeholder="+521234567890" autocomplete="tel">
+        <button id="btn-send-code" class="btn-primary">Enviar código</button>
+      </div>
+      <div id="login-code-step" class="hidden">
+        <p class="hint">Ingresa el código que recibiste en Telegram</p>
+        <input id="input-code" type="text" placeholder="12345" maxlength="6">
+        <button id="btn-verify-code" class="btn-primary">Verificar</button>
+        <button id="btn-back-phone" class="btn-ghost">← Cambiar número</button>
+      </div>
+      <div id="login-error" class="error hidden"></div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="screen-app" class="screen hidden">
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span class="app-title">✈️ TG Downloader</span>
+        <button id="btn-logout" title="Cerrar sesión">⏻</button>
+      </div>
+      <nav>
+        <button class="nav-btn active" data-view="channels">📡 Canales</button>
+        <button class="nav-btn" data-view="downloads">⬇️ Descargas</button>
+      </nav>
+    </aside>
+
+    <!-- CONTENT -->
+    <main id="main-content">
+
+      <!-- CHANNELS VIEW -->
+      <div id="view-channels" class="view active">
+        <div class="view-header">
+          <h2>Canales</h2>
+          <button id="btn-refresh-channels" class="btn-icon" title="Refrescar">↺</button>
+        </div>
+        <div class="search-bar">
+          <input id="input-search-channels" type="text" placeholder="Buscar canal...">
+        </div>
+        <div id="channels-list" class="list-container">
+          <div class="loading">Cargando canales...</div>
+        </div>
+      </div>
+
+      <!-- CHANNEL DETAIL VIEW -->
+      <div id="view-channel-detail" class="view hidden">
+        <div class="view-header">
+          <button id="btn-back-channels" class="btn-icon">←</button>
+          <h2 id="channel-detail-title">Canal</h2>
+        </div>
+        <div class="toolbar">
+          <label class="checkbox-label">
+            <input type="checkbox" id="chk-select-all"> Seleccionar todo
+          </label>
+          <div class="toolbar-right">
+            <label>Carpeta destino:
+              <input id="input-output-folder" type="text" placeholder="NombreSerie" class="folder-input">
+            </label>
+            <button id="btn-start-download" class="btn-primary" disabled>⬇️ Descargar seleccionados</button>
+          </div>
+        </div>
+        <div id="videos-list" class="list-container">
+          <div class="loading">Cargando videos...</div>
+        </div>
+      </div>
+
+      <!-- DOWNLOADS VIEW -->
+      <div id="view-downloads" class="view hidden">
+        <div class="view-header">
+          <h2>Descargas</h2>
+          <button id="btn-clear-completed" class="btn-ghost">Limpiar completadas</button>
+        </div>
+        <div id="downloads-list" class="list-container">
+          <div class="empty-state">No hay descargas activas.</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
