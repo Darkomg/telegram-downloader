@@ -89,12 +89,18 @@ function getMediaInfo(msg) {
   return null;
 }
 
+let clientConnecting = null;
 async function getClient() {
-  if (tgClient && !tgClient.disconnected) return tgClient;
-  const session = loadSession();
-  tgClient = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
-  await tgClient.connect();
-  return tgClient;
+  if (tgClient && tgClient.connected) return tgClient;
+  if (clientConnecting) return clientConnecting;
+  clientConnecting = (async () => {
+    const session = loadSession();
+    tgClient = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
+    await tgClient.connect();
+    clientConnecting = null;
+    return tgClient;
+  })();
+  return clientConnecting;
 }
 
 function broadcast(data) {
